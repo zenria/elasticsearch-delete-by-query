@@ -86,7 +86,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "elasticearch-delete-by-query"
+name = "elasticsearch-delete-by-query"
 version = "0.1.0"
 dependencies = [
  "anyhow",
