@@ -33,6 +33,9 @@ ARGS:
     <query>    JSON encoded query eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
 ```
 
+Cancel the running task upon exit (handle properly termination signals): you can 
+press Ctrl-C without lefting a long running task behind...
+
 ## License
 
 MIT
