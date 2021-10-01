@@ -2,7 +2,7 @@
 
 _Quick and dirty utility to launch and monitor delete by query on an Elasticsearch cluster_
 
-Relauch the delete by query if it fails, waiting for a completion without errors.
+Relauch the delete by query if it fails, waiting for a completion without failures.
 
 ## Installation
 
