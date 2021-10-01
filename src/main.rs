@@ -1,13 +1,16 @@
 use std::{collections::HashSet, time::Duration};
 
+use async_ctrlc::CtrlC;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
-use tokio::time::sleep;
+use tokio::{sync::watch, time::sleep};
+use tokio_stream::wrappers::WatchStream;
+use tokio_stream::StreamExt;
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Clone)]
 struct Opt {
     #[structopt(short = "u", long = "url", default_value = "http://localhost:9200")]
     url: url::Url,
@@ -23,7 +26,7 @@ struct Opt {
     query: serde_json::Value,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct TaskId(String);
 
 #[tokio::main]
@@ -39,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
             .template("{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
             .progress_chars("##-"),
     );
-
+    // Progress bar ticker
     {
         let bar = bar.clone();
         tokio::spawn(async move {
@@ -49,12 +52,50 @@ async fn main() -> anyhow::Result<()> {
             }
         });
     }
+    // Ctrl-C handler that cancels the task
+    let (write_task_id, current_task_id) = watch::channel(None::<TaskId>);
+    {
+        let bar = bar.clone();
+        let ctrlc = CtrlC::new()?;
+        let client = client.clone();
+        let opt = opt.clone();
+        tokio::spawn(async move {
+            let mut task_id = WatchStream::new(current_task_id);
+            ctrlc.await;
+            bar.set_message("Exit requested, waiting for task.");
+            // get last task_id
+            while let Some(task_id) = task_id.next().await {
+                if let Some(task_id) = task_id {
+                    // there is a task to cancel, let's cancel it!
+                    bar.set_message("Exit requested, cancelling task, please wait...");
+                    let resp = client
+                        .execute(
+                            client
+                                .post(
+                                    opt.url
+                                        .join(&format!("/_tasks/{}/_cancel", task_id.0))
+                                        .expect("Building the task cancel url shall not fail"),
+                                )
+                                .build()
+                                .expect("Building the task cancel POST request shall not fail"),
+                        )
+                        .await
+                        .and_then(|r| r.error_for_status());
+                    if let Err(e) = resp {
+                        bar.println(format!("Error while cancelling the task: {}", e));
+                        std::process::exit(12);
+                    }
+                }
+            }
+        });
+    }
 
     let mut deleted_total = 0;
     let mut hits = None;
     'retry: loop {
         bar.set_message("Sending delete by query...");
         let task_id = send_delete_by_query_task(&opt, &client).await?;
+        write_task_id.send(Some(task_id.clone()))?;
         bar.println(format!("Task ID: {}", task_id.0));
         bar.set_message("Waiting for task...");
         sleep(Duration::from_secs(2)).await;
