@@ -14,6 +14,7 @@ struct Opt {
     #[structopt(short = "i", long = "index", default_value = "*")]
     index: String,
     /// JSON encoded query
+    /// eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
     query: serde_json::Value,
 }
 
