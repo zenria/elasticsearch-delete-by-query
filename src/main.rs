@@ -67,23 +67,23 @@ async fn main() -> anyhow::Result<()> {
                             // so let's update it if needed
                             if response.task.status.total > total {
                                 hits = Some(response.task.status.total);
-                                bar.set_length(response.task.status.total);
+                                bar.set_length(response.task.status.total.max(0) as u64);
                             }
                         }
                         None => {
                             hits = Some(response.task.status.total);
-                            bar.set_length(response.task.status.total);
+                            bar.set_length(response.task.status.total.max(0) as u64);
                         }
                     }
                     if response.task.status.total > 0 {
                         bar.set_message("Delete in progress");
                     }
-                    bar.set_position(deleted_total + response.task.status.deleted);
+                    bar.set_position(deleted_total + response.task.status.deleted.max(0) as u64);
                     bar.tick();
                     match response.completed {
                         true => {
                             if let Some(response) = response.response {
-                                deleted_total += response.status.deleted;
+                                deleted_total += response.status.deleted.max(0) as u64;
                                 if response.failures.len() > 0 {
                                     bar.set_message("Error, will retry in 60s");
 
@@ -200,30 +200,30 @@ struct Task {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TaskStatus {
-    total: u64,
-    updated: u64,
-    created: u64,
-    deleted: u64,
-    batches: u64,
-    version_conflicts: u64,
-    noops: u64,
+    total: i64,
+    updated: i64,
+    created: i64,
+    deleted: i64,
+    batches: i64,
+    version_conflicts: i64,
+    noops: i64,
     retries: TaskRetries,
-    throttled_millis: u64,
+    throttled_millis: i64,
     requests_per_second: f64,
-    throttled_until_millis: u64,
+    throttled_until_millis: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TaskRetries {
-    bulk: u64,
-    search: u64,
+    bulk: i64,
+    search: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TaskResponse {
     #[serde(flatten)]
     status: TaskStatus,
-    took: u64,
+    took: i64,
     timed_out: bool,
     throttled: String,
     throttled_until: String,
@@ -233,7 +233,7 @@ struct TaskResponse {
 struct Failure {
     index: String,
     node: String,
-    shard: u64,
+    shard: i64,
     reason: Reason,
 }
 #[derive(Serialize, Deserialize, Debug)]
