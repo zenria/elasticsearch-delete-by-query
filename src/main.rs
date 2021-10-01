@@ -1,6 +1,7 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use indicatif::{ProgressBar, ProgressStyle};
+use itertools::Itertools;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -71,9 +72,21 @@ async fn main() -> anyhow::Result<()> {
                                 deleted_total += response.status.deleted;
                                 if response.failures.len() > 0 {
                                     bar.set_message("Error, will retry in 60s");
+
                                     bar.println(format!(
                                         "Failure detected: \n{}",
-                                        serde_json::to_string_pretty(&response.failures)?
+                                        response
+                                            .failures
+                                            .iter()
+                                            .map(|f| (
+                                                f.node.as_str(),
+                                                f.index.as_str(),
+                                                f.reason.reason.as_str()
+                                            ))
+                                            .collect::<HashSet<_>>()
+                                            .iter()
+                                            .map(|f| format!("({}, {}, {})", f.0, f.1, f.2))
+                                            .join(", ")
                                     ));
                                     sleep(Duration::from_secs(60)).await;
                                     // let's retry
@@ -197,5 +210,17 @@ struct TaskResponse {
     timed_out: bool,
     throttled: String,
     throttled_until: String,
-    failures: Vec<serde_json::Value>,
+    failures: Vec<Failure>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct Failure {
+    index: String,
+    node: String,
+    shard: u64,
+    reason: Reason,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct Reason {
+    reason: String,
+    r#type: String,
 }

@@ -16,3 +16,4 @@ structopt="0.3"
 serde={version="1", features=["derive"]}
 url = { version = "2", features = ["serde"] }
 indicatif="0.16"
+itertools="0.10"
