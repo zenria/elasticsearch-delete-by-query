@@ -21,6 +21,9 @@ struct Opt {
     /// Scroll size parameter (batch size)
     #[structopt(short = "s", long = "scroll-size")]
     scroll_size: Option<u64>,
+    /// Number of seconds to wait if an error occurs before retring to delete by query.
+    #[structopt(short = "p", long = "pause-on-errors", default_value = "300")]
+    pause_on_errors_secs: u64,
     /// JSON encoded query
     /// eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
     query: serde_json::Value,
@@ -126,7 +129,10 @@ async fn main() -> anyhow::Result<()> {
                             if let Some(response) = response.response {
                                 deleted_total += response.status.deleted.max(0) as u64;
                                 if response.failures.len() > 0 {
-                                    bar.set_message("Error, will retry in 60s");
+                                    bar.set_message(format!(
+                                        "Error, will retry in {}s",
+                                        opt.pause_on_errors_secs,
+                                    ));
 
                                     bar.println(format!(
                                         "Failure detected: \n{}",
@@ -143,7 +149,7 @@ async fn main() -> anyhow::Result<()> {
                                             .map(|f| format!("({}, {}, {})", f.0, f.1, f.2))
                                             .join(", ")
                                     ));
-                                    sleep(Duration::from_secs(60)).await;
+                                    sleep(Duration::from_secs(opt.pause_on_errors_secs)).await;
                                     // let's retry
                                     break 'status;
                                 }
