@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
             .template("{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
             .progress_chars("##-"),
     );
-    // Progress bar ticker
+    // Progress bar ticker to avoid illusion of starvation
     {
         let bar = bar.clone();
         tokio::spawn(async move {
@@ -56,18 +56,18 @@ async fn main() -> anyhow::Result<()> {
         });
     }
     // Ctrl-C handler that cancels the task
-    let (write_task_id, current_task_id) = watch::channel(None::<TaskId>);
+    let (current_task_id_sender, current_task_id_receiver) = watch::channel(None::<TaskId>);
     {
         let bar = bar.clone();
         let ctrlc = CtrlC::new()?;
         let client = client.clone();
         let opt = opt.clone();
         tokio::spawn(async move {
-            let mut task_id = WatchStream::new(current_task_id);
+            let mut current_task_id_stream = WatchStream::new(current_task_id_receiver);
             ctrlc.await;
             bar.set_message("Exit requested, waiting for task.");
             // get last task_id
-            while let Some(task_id) = task_id.next().await {
+            while let Some(task_id) = current_task_id_stream.next().await {
                 if let Some(task_id) = task_id {
                     // there is a task to cancel, let's cancel it!
                     bar.set_message("Exit requested, cancelling task, please wait...");
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
     'retry: loop {
         bar.set_message("Sending delete by query...");
         let task_id = send_delete_by_query_task(&opt, &client).await?;
-        write_task_id.send(Some(task_id.clone()))?;
+        current_task_id_sender.send(Some(task_id.clone()))?;
         bar.println(format!("Task ID: {}", task_id.0));
         bar.set_message("Waiting for task...");
         sleep(Duration::from_secs(2)).await;
