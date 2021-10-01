@@ -62,7 +62,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                     if response.task.status.total > 0 {
-                        bar.set_message("Deleting in progress");
+                        bar.set_message("Delete in progress");
                     }
                     bar.set_position(deleted_total + response.task.status.deleted);
                     bar.tick();
