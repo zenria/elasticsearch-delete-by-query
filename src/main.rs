@@ -36,13 +36,24 @@ async fn main() -> anyhow::Result<()> {
     let bar = ProgressBar::new(1);
     bar.set_style(
         ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .template("{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
             .progress_chars("##-"),
     );
+
+    {
+        let bar = bar.clone();
+        tokio::spawn(async move {
+            loop {
+                bar.tick();
+                sleep(Duration::from_millis(100)).await;
+            }
+        });
+    }
 
     let mut deleted_total = 0;
     let mut hits = None;
     'retry: loop {
+        bar.set_message("Sending delete by query...");
         let task_id = send_delete_by_query_task(&opt, &client).await?;
         bar.println(format!("Task ID: {}", task_id.0));
         bar.set_message("Waiting for task...");
