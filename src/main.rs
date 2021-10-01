@@ -46,10 +46,22 @@ async fn main() -> anyhow::Result<()> {
         'status: loop {
             match get_task(&task_id, &opt, &client).await {
                 Ok(response) => {
-                    if hits.is_none() {
-                        hits = Some(response.task.status.total);
-                        bar.set_length(response.task.status.total);
-                        bar.set_message("Deleting...");
+                    match hits {
+                        Some(total) => {
+                            // when ES has not yet really started the task, it will report a total if 0
+                            // so let's update it if needed
+                            if response.task.status.total > total {
+                                hits = Some(response.task.status.total);
+                                bar.set_length(response.task.status.total);
+                            }
+                        }
+                        None => {
+                            hits = Some(response.task.status.total);
+                            bar.set_length(response.task.status.total);
+                        }
+                    }
+                    if response.task.status.total > 0 {
+                        bar.set_message("Deleting in progress");
                     }
                     bar.set_position(deleted_total + response.task.status.deleted);
                     bar.tick();
