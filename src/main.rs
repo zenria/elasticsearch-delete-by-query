@@ -185,19 +185,17 @@ async fn send_delete_by_query_task(
     client: &Client,
     bar: &ProgressBar,
 ) -> anyhow::Result<TaskId> {
-    let url = opt.url.join(&format!(
-        "/{}/_delete_by_query?wait_for_completion=false&{}{}{}",
-        opt.index,
-        opt.requests_per_second
-            .map_or("".to_string(), |s| format!("&requests_per_second={}", s)),
-        opt.scroll_size
-            .map_or("".to_string(), |s| format!("&scroll_size={}", s)),
-        if opt.abort_on_conflict {
-            ""
-        } else {
-            "&conflicts=proceed"
-        }
-    ))?;
+    let mut path = format!("/{}/_delete_by_query?wait_for_completion=false", opt.index);
+    if let Some(requests_per_seconds) = &opt.requests_per_second {
+        path.push_str(&format!("&requests_per_second={}", requests_per_seconds));
+    }
+    if let Some(scroll_size) = &opt.scroll_size {
+        path.push_str(&format!("&scroll_size={}", scroll_size));
+    }
+    if !opt.abort_on_conflict {
+        path.push_str("&conflicts=proceed");
+    }
+    let url = opt.url.join(&path)?;
     bar.println(format!("Delete by query url: {}", url));
     let request = client
         .post(url)
