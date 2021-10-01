@@ -83,7 +83,12 @@ async fn send_delete_by_query_task(opt: &Opt, client: &Client) -> anyhow::Result
         "/{}/_delete_by_query?wait_for_completion=false&conflicts=proceed&requests_per_second={}",
         opt.index, opt.requests_per_second
     ))?;
-    let request = client.post(url).json(&opt.query).build()?;
+    let request = client
+        .post(url)
+        .json(&DeleteByQuery {
+            query: opt.query.clone(),
+        })
+        .build()?;
     Ok(client
         .execute(request)
         .await?
@@ -91,6 +96,11 @@ async fn send_delete_by_query_task(opt: &Opt, client: &Client) -> anyhow::Result
         .json::<DeleteByQueryResponse>()
         .await?
         .task)
+}
+
+#[derive(Serialize)]
+struct DeleteByQuery {
+    query: serde_json::Value,
 }
 
 async fn get_task(task_id: &TaskId, opt: &Opt, client: &Client) -> anyhow::Result<GetTaskResponse> {
