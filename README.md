@@ -38,6 +38,11 @@ ARGS:
 
 Cancel the running task upon exit (handle properly termination signals): you can 
 press Ctrl-C without lefting a long running task behind...
+```
+
+## Disclaimer
+
+It has only been tested against a 6.8 cluster.
 
 ## License
 
