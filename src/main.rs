@@ -142,7 +142,7 @@ async fn main() -> anyhow::Result<()> {
                                             .map(|f| (f.node.as_str(), f.reason.reason.as_str()))
                                             .collect::<HashSet<_>>()
                                             .iter()
-                                            .map(|f| format!("({}, {})", f.0, f.2))
+                                            .map(|f| format!("({}, {})", f.0, f.1))
                                             .join(", ")
                                     ));
                                     sleep(Duration::from_secs(opt.pause_on_errors_secs)).await;
