@@ -41,7 +41,7 @@ ARGS:
 ```
 
 Cancel the running task upon exit (handle properly termination signals): you can 
-press Ctrl-C without lefting a long running task behind...
+press Ctrl-C without letting a long running task behind...
 
 ## Disclaimer
 
