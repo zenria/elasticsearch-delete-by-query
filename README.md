@@ -6,7 +6,9 @@ Relauch the delete by query if it fails, waiting for a completion without failur
 
 ## Installation
 
-You need a working Rust toolchain to install this, then simply run:
+You need a working Rust toolchain to install this.
+
+From a terminal, run:
 
 ```
 cargo install --git https://github.com/zenria/elasticsearch-delete-by-query.git
