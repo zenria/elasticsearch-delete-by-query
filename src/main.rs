@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
@@ -28,38 +29,50 @@ async fn main() -> anyhow::Result<()> {
         .timeout(Duration::from_secs(60))
         .build()?;
 
+    let bar = ProgressBar::new(1);
+    bar.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .progress_chars("##-"),
+    );
+
     let mut deleted_total = 0;
+    let mut hits = None;
     'retry: loop {
         let task_id = send_delete_by_query_task(&opt, &client).await?;
-        println!("Task ID: {}", task_id.0);
+        bar.println(format!("Task ID: {}", task_id.0));
+        bar.set_message("Waiting for task...");
         sleep(Duration::from_secs(2)).await;
         'status: loop {
             match get_task(&task_id, &opt, &client).await {
                 Ok(response) => {
+                    if hits.is_none() {
+                        hits = Some(response.task.status.total);
+                        bar.set_length(response.task.status.total);
+                        bar.set_message("Deleting...");
+                    }
+                    bar.set_position(deleted_total + response.task.status.deleted);
+                    bar.tick();
                     match response.completed {
                         true => {
                             if let Some(response) = response.response {
                                 deleted_total += response.status.deleted;
                                 if response.failures.len() > 0 {
-                                    eprintln!(
+                                    bar.set_message("Error, will retry in 60s");
+                                    bar.println(format!(
                                         "Failure detected: \n{}",
                                         serde_json::to_string_pretty(&response.failures)?
-                                    );
-                                    eprintln!(
-                                        "Deleted so far: {}, retrying in 60s.",
-                                        deleted_total
-                                    );
+                                    ));
                                     sleep(Duration::from_secs(60)).await;
                                     // let's retry
                                     break 'status;
                                 }
                             } else {
-                                eprintln!(
+                                bar.println(format!(
                                     "No 'response' field in completed task response: \n{}",
                                     serde_json::to_string_pretty(&response)?
-                                );
+                                ));
                             }
-                            println!("Done deleting! Deleted: {} docs.", deleted_total);
                             break 'retry;
                         }
                         false => {
@@ -69,12 +82,14 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Unable to get task: {}", e);
+                    bar.println(format!("Unable to get task: {}", e));
                     sleep(Duration::from_secs(5)).await;
                 }
             }
         }
     }
+    bar.set_message("Task completed without failures.");
+    bar.finish_at_current_pos();
 
     Ok(())
 }
