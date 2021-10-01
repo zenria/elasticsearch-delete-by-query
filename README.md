@@ -17,30 +17,31 @@ cargo install --git https://github.com/zenria/elasticsearch-delete-by-query.git
 ## Usage
 
 ```
-elasticsearch-delete-by-query 0.1.0
+elasticsearch-delete-by-query 1.0.0
 
 USAGE:
-    elasticsearch-delete-by-query [OPTIONS] <query>
+    elasticsearch-delete-by-query [FLAGS] [OPTIONS] <query>
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+        --abort-on-conflict    Abort on conflict
+    -h, --help                 Prints help information
+    -V, --version              Prints version information
 
 OPTIONS:
     -i, --index <index>                                  [default: *]
     -p, --pause-on-errors <pause-on-errors-secs>
             Number of seconds to wait if an error occurs before retring to delete by query [default: 300]
 
-    -r, --requests-per-seconds <requests-per-second>     [default: 100]
+    -r, --requests-per-seconds <requests-per-second>    Number of deletes per seconds (throttling)
     -s, --scroll-size <scroll-size>                     Scroll size parameter (batch size)
     -u, --url <url>                                      [default: http://localhost:9200]
 
 ARGS:
-    <query>    JSON encoded query eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}```
+    <query>    JSON encoded query eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
+```
 
 Cancel the running task upon exit (handle properly termination signals): you can 
 press Ctrl-C without lefting a long running task behind...
-```
 
 ## Disclaimer
 

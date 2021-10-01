@@ -14,8 +14,9 @@ use tokio_stream::StreamExt;
 struct Opt {
     #[structopt(short = "u", long = "url", default_value = "http://localhost:9200")]
     url: url::Url,
-    #[structopt(short = "r", long = "requests-per-seconds", default_value = "100")]
-    requests_per_second: i32,
+    /// Number of deletes per seconds (throttling)
+    #[structopt(short = "r", long = "requests-per-seconds")]
+    requests_per_second: Option<i32>,
     #[structopt(short = "i", long = "index", default_value = "*")]
     index: String,
     /// Scroll size parameter (batch size)
@@ -24,6 +25,9 @@ struct Opt {
     /// Number of seconds to wait if an error occurs before retring to delete by query.
     #[structopt(short = "p", long = "pause-on-errors", default_value = "300")]
     pause_on_errors_secs: u64,
+    /// Abort on conflict
+    #[structopt(long = "abort-on-conflict")]
+    abort_on_conflict: bool,
     /// JSON encoded query
     /// eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
     query: serde_json::Value,
@@ -97,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
     let mut hits = None;
     'retry: loop {
         bar.set_message("Sending delete by query...");
-        let task_id = send_delete_by_query_task(&opt, &client).await?;
+        let task_id = send_delete_by_query_task(&opt, &client, &bar).await?;
         current_task_id_sender.send(Some(task_id.clone()))?;
         bar.println(format!("Task ID: {}", task_id.0));
         bar.set_message("Waiting for task...");
@@ -176,14 +180,25 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn send_delete_by_query_task(opt: &Opt, client: &Client) -> anyhow::Result<TaskId> {
+async fn send_delete_by_query_task(
+    opt: &Opt,
+    client: &Client,
+    bar: &ProgressBar,
+) -> anyhow::Result<TaskId> {
     let url = opt.url.join(&format!(
-        "/{}/_delete_by_query?wait_for_completion=false&conflicts=proceed&requests_per_second={}{}",
+        "/{}/_delete_by_query?wait_for_completion=false&{}{}{}",
         opt.index,
-        opt.requests_per_second,
+        opt.requests_per_second
+            .map_or("".to_string(), |s| format!("&requests_per_second={}", s)),
         opt.scroll_size
-            .map_or("".to_string(), |s| format!("&scroll_size={}", s))
+            .map_or("".to_string(), |s| format!("&scroll_size={}", s)),
+        if opt.abort_on_conflict {
+            ""
+        } else {
+            "&conflicts=proceed"
+        }
     ))?;
+    bar.println(format!("Delete by query url: {}", url));
     let request = client
         .post(url)
         .json(&DeleteByQuery {
