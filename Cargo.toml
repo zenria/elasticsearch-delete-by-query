@@ -1,0 +1,17 @@
+[package]
+name = "elasticearch-delete-by-query"
+version = "0.1.0"
+edition = "2018"
+description="Quick and dirty utility to launch and monitor delete by query on an Elasticsearch cluster"
+license="MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = {version="0.11", default_features=false, features=["json", "rustls"]}
+tokio = { version="^1.0", features = ["rt","rt-multi-thread", "macros"]}
+serde_json = "*"
+anyhow="1"
+structopt="0.3"
+serde={version="1", features=["derive"]}
+url = { version = "2", features = ["serde"] }
