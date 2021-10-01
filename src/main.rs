@@ -139,14 +139,10 @@ async fn main() -> anyhow::Result<()> {
                                         response
                                             .failures
                                             .iter()
-                                            .map(|f| (
-                                                f.node.as_str(),
-                                                f.index.as_str(),
-                                                f.reason.reason.as_str()
-                                            ))
+                                            .map(|f| (f.node.as_str(), f.reason.reason.as_str()))
                                             .collect::<HashSet<_>>()
                                             .iter()
-                                            .map(|f| format!("({}, {}, {})", f.0, f.1, f.2))
+                                            .map(|f| format!("({}, {})", f.0, f.2))
                                             .join(", ")
                                     ));
                                     sleep(Duration::from_secs(opt.pause_on_errors_secs)).await;
@@ -278,7 +274,7 @@ struct TaskResponse {
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct Failure {
-    index: String,
+    index: Option<String>,
     node: String,
     shard: i64,
     reason: Reason,
