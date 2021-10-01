@@ -15,6 +15,9 @@ struct Opt {
     requests_per_second: i32,
     #[structopt(short = "i", long = "index", default_value = "*")]
     index: String,
+    /// Scroll size parameter (batch size)
+    #[structopt(short = "s", long = "scroll-size")]
+    scroll_size: Option<u64>,
     /// JSON encoded query
     /// eg: {"range":{"lastIndexingDate":{"lte":"now-3y"}}}
     query: serde_json::Value,
@@ -121,8 +124,11 @@ async fn main() -> anyhow::Result<()> {
 
 async fn send_delete_by_query_task(opt: &Opt, client: &Client) -> anyhow::Result<TaskId> {
     let url = opt.url.join(&format!(
-        "/{}/_delete_by_query?wait_for_completion=false&conflicts=proceed&requests_per_second={}",
-        opt.index, opt.requests_per_second
+        "/{}/_delete_by_query?wait_for_completion=false&conflicts=proceed&requests_per_second={}{}",
+        opt.index,
+        opt.requests_per_second,
+        opt.scroll_size
+            .map_or("".to_string(), |s| format!("&scroll_size={}", s))
     ))?;
     let request = client
         .post(url)
