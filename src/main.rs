@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     let bar = ProgressBar::new(1);
     bar.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .template("{spinner} [{elapsed_precise}] {bar:40.cyan/blue} {percent}% {pos:>7}/{len:7} {msg}")
             .progress_chars("##-"),
     );
     // Progress bar ticker to avoid illusion of starvation
